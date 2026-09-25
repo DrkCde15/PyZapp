@@ -230,6 +230,25 @@ describe('WhatsAppManager', () => {
     await new Promise((r) => setImmediate(r));
     assert.equal(delivered.length, 0);
   });
+
+  it('fans inbound out to the events sink even without webhook', async () => {
+    const sunk = [];
+    const h = makeHarness();
+    h.manager.eventsSink = async (payload) => {
+      sunk.push(payload);
+    };
+    await h.manager.create('sinktest');
+    h.sockets[0].ev.emit('messages.upsert', {
+      type: 'notify',
+      messages: [
+        { key: { remoteJid: '5511888888888@s.whatsapp.net', fromMe: false, id: 'IN3' }, message: { conversation: 'hey' }, messageTimestamp: 7 },
+      ],
+    });
+    await new Promise((r) => setImmediate(r));
+    assert.equal(sunk.length, 1);
+    assert.equal(sunk[0].event, 'message.received');
+    assert.equal(sunk[0].text, 'hey');
+  });
 });
 
 describe('SessionStore', () => {

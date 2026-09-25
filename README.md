@@ -105,6 +105,9 @@ GET    /instances/{id}/status
 POST   /instances/{id}/messages      {"phone": "+5511999999999", "text": "Olá!"}
 POST   /instances/{id}/pairing-code   {"phone": "+5511999999999"} -> {"pairing_code": "ABCD-1234"}
 PUT    /instances/{id}/webhook        {"url": "https://sua-app.com/wa", "secret": "..."}
+PUT    /instances/{id}/ai             {"provider": "groq", "system_prompt": "..."} -> config
+GET    /instances/{id}/ai             -> config atual (sem expor a chave)
+DELETE /instances/{id}/ai             -> desliga o auto-reply
 GET    /health
 ```
 
@@ -127,6 +130,24 @@ tentativas (backoff); sem webhook configurado, inbound é descartado com log.
 Erros seguem o envelope `{ "success": false, "error": {"code": "...", "message": "..."} }`
 com códigos estáveis: `unauthorized`, `instance_not_found`, `not_connected`,
 `qr_not_available`, `validation_error`, `baileys_unreachable`, `baileys_error`.
+
+## IA auto-reply (opcional)
+
+```python
+client.set_ai(
+    instance.id,
+    provider="groq",            # openai | groq | openrouter | ollama | gemini | anthropic
+    model="llama-3.3-70b-versatile",
+    system_prompt="Você é o atendente da loja. Seja breve.",
+    cooldown_s=30,
+)
+```
+
+Providers OpenAI-compatíveis usam `base_url` padrão (sobrescreva para gateway
+próprio); chaves via env (`OPENAI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`,
+`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) ou por instância (`api_key=`). Ollama
+local dispensa chave. Histórico das últimas N mensagens por conversa (SQLite),
+cooldown por remetente e opt-out (`SAIR`/`STOP`/`PARAR`) inclusos.
 
 ## Estrutura
 

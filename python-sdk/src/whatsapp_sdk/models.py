@@ -38,3 +38,15 @@ class QRCode(BaseModel):
 
 class SentMessage(BaseModel):
     message_id: str
+
+
+class AIConfig(BaseModel):
+    instance_id: str
+    enabled: bool
+    provider: str | None = None
+    model: str | None = None
+    base_url: str | None = None
+    api_key_configured: bool = False
+    system_prompt: str | None = None
+    max_history: int = 20
+    cooldown_s: int = 0

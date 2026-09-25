@@ -13,7 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.config import Settings, get_settings
 from app.errors import ApiError, BaileysError, error_envelope
 from app.logging_utils import logger, setup_logging
-from app.routes import health, instances
+from app.routes import ai, health, instances
 from app.services.baileys import BaileysClient
 from app.store import InstanceStore
 
@@ -31,6 +31,19 @@ async def lifespan(app: FastAPI):
     )
     app.state.store = InstanceStore(settings.database_path or None)
 
+    import os
+
+    from app.ai.responder import AIResponder
+    from app.ai.store import AIStore
+
+    app.state.ai_store = AIStore(settings.database_path or None)
+
+    async def _send_via_baileys(instance_id: str, to: str, text: str) -> str:
+        data = await app.state.baileys.send_message(instance_id, to, text)
+        return data.get("message_id", "")
+
+    app.state.responder = AIResponder(app.state.ai_store, dict(os.environ), _send_via_baileys)
+
     # Best-effort re-sync: adopt instances the Baileys service still knows
     # about (e.g. API restarted while sessions persisted on disk).
     try:
@@ -43,6 +56,7 @@ async def lifespan(app: FastAPI):
     yield
     await app.state.baileys.aclose()
     app.state.store.close()
+    app.state.ai_store.close()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -58,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health.router, tags=["health"])
     app.include_router(instances.router, tags=["instances"])
+    app.include_router(ai.router, tags=["ai"])
 
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, exc: ApiError):

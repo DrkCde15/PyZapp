@@ -125,6 +125,27 @@ def test_set_webhook():
     assert seen == {"url": "https://example.com/wa", "secret": "s3cret"}
 
 
+def test_ai_crud():
+    def handler(request: httpx.Request):
+        if request.method == "PUT":
+            return ok({
+                "instance_id": "abc", "enabled": True, "provider": "groq",
+                "model": "llama-3.3-70b-versatile", "base_url": None,
+                "api_key_configured": False, "system_prompt": "Seja breve.",
+                "max_history": 20, "cooldown_s": 0,
+            })
+        if request.method == "GET":
+            return ok({"instance_id": "abc", "enabled": False})
+        assert request.method == "DELETE"
+        return ok({"instance_id": "abc", "enabled": False})
+
+    c = make_client(handler)
+    cfg = c.set_ai("abc", provider="groq", system_prompt="Seja breve.")
+    assert cfg.provider == "groq" and cfg.enabled is True
+    assert c.get_ai("abc").enabled is False
+    c.disable_ai("abc")
+
+
 def test_print_qr(capsys):
     def handler(_request: httpx.Request):
         return ok({"qr": "QRDATA", "updated_at": None})

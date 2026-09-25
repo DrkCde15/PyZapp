@@ -13,7 +13,14 @@ import httpx
 import qrcode
 
 from whatsapp_sdk.exceptions import WhatsAppSDKError, error_from_response
-from whatsapp_sdk.models import ConnectionStatus, Instance, InstanceDetail, QRCode, SentMessage
+from whatsapp_sdk.models import (
+    AIConfig,
+    ConnectionStatus,
+    Instance,
+    InstanceDetail,
+    QRCode,
+    SentMessage,
+)
 
 
 class WhatsAppClient:
@@ -136,3 +143,40 @@ class WhatsAppClient:
             f"/instances/{instance_id}/webhook",
             json={"url": url, "secret": secret},
         )
+
+    # -- AI auto-reply ------------------------------------------------------
+    def set_ai(
+        self,
+        instance_id: str,
+        provider: str,
+        model: str | None = None,
+        system_prompt: str | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        max_history: int = 20,
+        cooldown_s: int = 0,
+        enabled: bool = True,
+    ) -> AIConfig:
+        """Enable AI auto-reply. Provider: openai | groq | openrouter | ollama | gemini | anthropic."""
+        return AIConfig.model_validate(
+            self._request(
+                "PUT",
+                f"/instances/{instance_id}/ai",
+                json={
+                    "enabled": enabled,
+                    "provider": provider,
+                    "model": model,
+                    "base_url": base_url,
+                    "api_key": api_key,
+                    "system_prompt": system_prompt,
+                    "max_history": max_history,
+                    "cooldown_s": cooldown_s,
+                },
+            )
+        )
+
+    def get_ai(self, instance_id: str) -> AIConfig:
+        return AIConfig.model_validate(self._request("GET", f"/instances/{instance_id}/ai"))
+
+    def disable_ai(self, instance_id: str) -> None:
+        self._request("DELETE", f"/instances/{instance_id}/ai")

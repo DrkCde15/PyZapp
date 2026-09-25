@@ -62,11 +62,14 @@ async function defaultDeliverWebhook({ url, secret, payload, log }) {
  *   Route -> WhatsAppManager -> WhatsAppInstance -> Baileys
  */
 class WhatsAppManager {
-  constructor({ sessionStore, socketFactory, deliverWebhook, log } = {}) {
+  constructor({ sessionStore, socketFactory, deliverWebhook, eventsSink, log } = {}) {
     if (!sessionStore) throw new Error('WhatsAppManager requires a sessionStore');
     this.sessionStore = sessionStore;
     this.socketFactory = socketFactory;
     this.deliverWebhook = deliverWebhook || defaultDeliverWebhook;
+    // Optional fan-out of inbound events to the API for AI auto-reply:
+    // async (payload) => void. Disabled when absent.
+    this.eventsSink = eventsSink || null;
     this.log = log || logger;
     this.instances = new Map();
   }
@@ -79,12 +82,17 @@ class WhatsAppManager {
           { event: 'inbound_no_webhook', instance_id: payload.instance_id },
           'Inbound message dropped: no webhook configured'
         );
-        return;
+      } else {
+        // Fire-and-forget: never block the Baileys event loop.
+        this.deliverWebhook({ url: webhook.url, secret: webhook.secret, payload, log: this.log }).catch(
+          (err) => this.log.error({ event: 'webhook_error', error: err.message }, 'Webhook error')
+        );
       }
-      // Fire-and-forget: never block the Baileys event loop.
-      this.deliverWebhook({ url: webhook.url, secret: webhook.secret, payload, log: this.log }).catch(
-        (err) => this.log.error({ event: 'webhook_error', error: err.message }, 'Webhook error')
-      );
+      if (this.eventsSink) {
+        this.eventsSink(payload).catch((err) =>
+          this.log.error({ event: 'events_sink_error', error: err.message }, 'Events sink error')
+        );
+      }
     };
     return instance;
   }

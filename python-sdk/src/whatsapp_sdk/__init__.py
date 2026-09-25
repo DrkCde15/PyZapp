@@ -10,7 +10,7 @@ from whatsapp_sdk.exceptions import (
     ValidationError,
     WhatsAppSDKError,
 )
-from whatsapp_sdk.models import ConnectionStatus, Instance, InstanceDetail, QRCode, SentMessage
+from whatsapp_sdk.models import ConnectionStatus, Instance, InstanceDetail, QRCode, SentMessage, AIConfig
 
 __all__ = [
     "WhatsAppClient",
@@ -26,4 +26,5 @@ __all__ = [
     "ConnectionStatus",
     "QRCode",
     "SentMessage",
+    "AIConfig",
 ]

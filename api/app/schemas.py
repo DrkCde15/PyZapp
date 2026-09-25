@@ -83,3 +83,35 @@ class HealthData(BaseModel):
     service: str = "api"
     baileys: str = "ok"
     baileys_detail: Any | None = None
+
+
+class AIConfigRequest(BaseModel):
+    enabled: bool = True
+    provider: str = Field(..., description="openai | groq | openrouter | ollama | gemini | anthropic")
+    model: str | None = None
+    base_url: str | None = Field(default=None, description="Override (self-hosted gateway)")
+    api_key: str | None = Field(default=None, description="Per-instance key; falls back to env")
+    system_prompt: str | None = Field(default=None, max_length=4000)
+    max_history: int = Field(default=20, ge=1, le=100)
+    cooldown_s: int = Field(default=0, ge=0, le=3600)
+
+
+class AIConfigData(BaseModel):
+    instance_id: str
+    enabled: bool
+    provider: str
+    model: str | None = None
+    base_url: str | None = None
+    api_key_configured: bool = False
+    system_prompt: str | None = None
+    max_history: int = 20
+    cooldown_s: int = 0
+
+
+class InboundEvent(BaseModel):
+    event: str = "message.received"
+    instance_id: str
+    message_id: str | None = None
+    from_: str = Field(..., alias="from")
+    text: str = ""
+    timestamp: int | float | None = None

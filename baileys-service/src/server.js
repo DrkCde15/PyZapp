@@ -49,7 +49,27 @@ function buildApp(manager) {
 
 async function main() {
   const sessionStore = new SessionStore(config.sessionDir);
-  const manager = new WhatsAppManager({ sessionStore });
+
+  // Fan-out of inbound events to the API (AI auto-reply intake).
+  const eventsSink = config.eventsUrl
+    ? async (payload) => {
+        const resp = await fetch(config.eventsUrl, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(config.internalApiKey ? { 'x-internal-key': config.internalApiKey } : {}),
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!resp.ok) throw new Error(`events sink HTTP ${resp.status}`);
+      }
+    : null;
+  if (eventsSink) {
+    logger.info({ event: 'events_sink_enabled' }, 'Inbound events fan-out enabled');
+  }
+
+  const manager = new WhatsAppManager({ sessionStore, eventsSink });
   const app = buildApp(manager);
 
   const server = app.listen(config.port, () => {
