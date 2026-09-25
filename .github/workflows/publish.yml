@@ -31,6 +31,6 @@ jobs:
       - name: Install build backend
         run: pip install build
       - name: Build sdist + wheel
-        run: python -m build python-sdk/
+        run: python -m build python-sdk/ --outdir dist/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
