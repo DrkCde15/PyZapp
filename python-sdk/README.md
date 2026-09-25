@@ -1,34 +1,65 @@
 # PyZapp Python SDK
 
-Elegant HTTP client for the PyZapp API. No Node.js, no Baileys here —
-just `httpx` + `pydantic` with typed models and mapped errors.
-
-## Install
+Send and receive WhatsApp messages from Python. No Node.js, no browser
+automation — just `pip install pyzapp-sdk` and an API key.
 
 ```bash
-pip install -e .
+pip install pyzapp-sdk
 ```
-
-## Use
 
 ```python
 from whatsapp_sdk import WhatsAppClient
 
-with WhatsAppClient(base_url="http://localhost:8000", api_key="...") as client:
+with WhatsAppClient(base_url="https://sua-api.com", api_key="...") as client:
     inst = client.create_instance()
-    client.print_qr(inst.instance_id)   # ASCII no terminal; escaneie com o WhatsApp
+    client.print_qr(inst.instance_id)  # scan with WhatsApp
     client.send_message(inst.instance_id, "+5511999999999", "Olá!")
 ```
 
-Methods: `create_instance`, `list_instances`, `get_instance`,
-`delete_instance`, `connect`, `get_qr`, `print_qr`, `get_status`, `send_message`,
-`request_pairing_code` (returns the 8-digit string), `set_webhook(url, secret?)`.
+No QR? Use a pairing code instead:
 
-Errors (all subclass `WhatsAppSDKError`, with stable `.code`):
+```python
+print(client.request_pairing_code(inst.instance_id, "+5511999999999"))
+# type the 8-digit code on your phone
+```
+
+AI auto-reply (OpenAI, Groq, OpenRouter, Ollama, Gemini, Anthropic):
+
+```python
+client.set_ai(inst.instance_id, provider="groq", system_prompt="Seja breve.")
+```
+
+## Methods
+
+Instances: `create_instance`, `list_instances`, `get_instance`,
+`delete_instance`, `connect`, `get_qr`, `print_qr`, `get_status`.
+
+Messaging: `send_message`, `request_pairing_code`, `set_webhook(url, secret?)`.
+
+AI: `set_ai`, `get_ai`, `disable_ai`.
+
+## Errors
+
+All subclass `WhatsAppSDKError` and carry a stable `.code`:
+
 `AuthenticationError`, `InstanceNotFoundError`, `NotConnectedError`,
 `QRNotAvailableError`, `ValidationError`, `ServiceError`.
 
-## Tests
+```python
+from whatsapp_sdk import NotConnectedError, WhatsAppClient
+
+try:
+    client.send_message(iid, phone, text)
+except NotConnectedError:
+    print("scan the QR first")
+```
+
+## Requirements
+
+Python 3.10+. Server side (FastAPI + Baileys) is operated separately —
+see the [main repo](https://github.com/DrkCde15/PyZapp) to self-host with Podman.
+
+## Development
 
 ```bash
 pip install -e ".[dev]"

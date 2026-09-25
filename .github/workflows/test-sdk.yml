@@ -1,0 +1,23 @@
+name: SDK tests
+
+on:
+  push:
+    paths: ["python-sdk/**", ".github/workflows/test-sdk.yml"]
+  pull_request:
+    paths: ["python-sdk/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install SDK with dev deps
+        run: pip install ./python-sdk[dev]
+      - name: Run tests
+        run: python -m pytest python-sdk/tests -q
