@@ -1,6 +1,6 @@
 [project]
 name = "pyzapp-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Elegant Python client for the PyZapp WhatsApp API. No Node.js required."
 readme = "README.md"
 license = { text = "MIT" }
