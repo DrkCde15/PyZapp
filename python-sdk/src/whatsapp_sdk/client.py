@@ -6,6 +6,9 @@ error mapping and typed responses.
 
 from __future__ import annotations
 
+import base64
+import mimetypes
+from pathlib import Path
 from types import TracebackType
 from typing import Any
 
@@ -127,6 +130,73 @@ class WhatsAppClient:
             )
         )
 
+    def send_image(
+        self,
+        instance_id: str,
+        phone: str,
+        image: bytes | str,
+        caption: str = "",
+        mimetype: str | None = None,
+    ) -> SentMessage:
+        """Send an image (JPEG/PNG/WebP). `image` = bytes or file path."""
+        return self._send_media(instance_id, phone, "image", image, caption=caption, mimetype=mimetype)
+
+    def send_audio(
+        self,
+        instance_id: str,
+        phone: str,
+        audio: bytes | str,
+        mimetype: str | None = None,
+        voice_note: bool = False,
+    ) -> SentMessage:
+        """Send audio. `voice_note=True` renders it as a voice message."""
+        return self._send_media(
+            instance_id, phone, "audio", audio, mimetype=mimetype, voice_note=voice_note
+        )
+
+    def send_document(
+        self,
+        instance_id: str,
+        phone: str,
+        document: bytes | str,
+        filename: str | None = None,
+        mimetype: str | None = None,
+        caption: str = "",
+    ) -> SentMessage:
+        """Send a document. `filename` defaults to the file's basename when a path is given."""
+        return self._send_media(
+            instance_id, phone, "document", document,
+            filename=filename, mimetype=mimetype, caption=caption,
+        )
+
+    def _send_media(
+        self,
+        instance_id: str,
+        phone: str,
+        media_type: str,
+        data: bytes | str,
+        caption: str = "",
+        mimetype: str | None = None,
+        filename: str | None = None,
+        voice_note: bool = False,
+    ) -> SentMessage:
+        raw, resolved_name = _read_media(data)
+        return SentMessage.model_validate(
+            self._request(
+                "POST",
+                f"/instances/{instance_id}/media",
+                json={
+                    "phone": phone,
+                    "media_type": media_type,
+                    "data": base64.b64encode(raw).decode(),
+                    "mimetype": mimetype or _guess_mimetype(resolved_name, media_type),
+                    "caption": caption,
+                    "filename": filename or resolved_name,
+                    "voice_note": voice_note,
+                },
+            )
+        )
+
     def request_pairing_code(self, instance_id: str, phone: str) -> str:
         """Issue an 8-digit code to type on the phone instead of scanning a QR."""
         data = self._request(
@@ -180,3 +250,19 @@ class WhatsAppClient:
 
     def disable_ai(self, instance_id: str) -> None:
         self._request("DELETE", f"/instances/{instance_id}/ai")
+
+
+def _read_media(data: bytes | str) -> tuple[bytes, str | None]:
+    """Accept raw bytes or a file path. Returns (bytes, filename-or-None)."""
+    if isinstance(data, (bytes, bytearray)):
+        return bytes(data), None
+    path = Path(data)
+    return path.read_bytes(), path.name
+
+
+def _guess_mimetype(filename: str | None, media_type: str) -> str | None:
+    if filename:
+        guessed, _ = mimetypes.guess_type(filename)
+        if guessed:
+            return guessed
+    return {"image": "image/jpeg", "audio": "audio/ogg; codecs=opus"}.get(media_type)

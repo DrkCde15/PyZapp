@@ -15,7 +15,9 @@ const { buildHealthRoutes } = require('./routes/health');
 function buildApp(manager) {
   const app = express();
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '256kb' }));
+  // 20mb accommodates base64 media (capped at 12MB binary upstream).
+  // This service is internal-only; the public API enforces its own limits.
+  app.use(express.json({ limit: '20mb' }));
 
   // Structured request log (no bodies, no secrets).
   app.use((req, res, next) => {

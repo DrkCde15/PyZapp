@@ -74,8 +74,29 @@ function buildInternalRoutes(manager) {
     }
   });
 
-  router.post('/instances/:id/pairing-code', async (req, res, next) => {
+  router.post('/instances/:id/media', async (req, res, next) => {
     try {
+      const { to, media_type, data, mimetype, caption, filename, voice_note } = req.body || {};
+      if (typeof to !== 'string' || !to.trim()) {
+        throw new InvalidInputError('Field "to" is required');
+      }
+      const messageId = await manager.sendMedia(req.params.id, to, media_type, data, {
+        mimetype,
+        caption: caption || '',
+        filename: filename ?? null,
+        voiceNote: !!voice_note,
+      });
+      req.log.info(
+        { event: 'media_sent', instance_id: req.params.id, to: maskPhone(to), media_type, message_id: messageId },
+        'Media sent'
+      );
+      return res.json(ok({ message_id: messageId }));
+    } catch (err) {
+      return next(err);
+    }
+  });
+
+  router.post('/instances/:id/pairing-code', async (req, res, next) => {    try {
       const { phone } = req.body || {};
       if (typeof phone !== 'string' || !phone.trim()) {
         throw new InvalidInputError('Field "phone" is required');

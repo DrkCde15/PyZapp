@@ -103,6 +103,7 @@ POST   /instances/{id}/connect
 GET    /instances/{id}/qr
 GET    /instances/{id}/status
 POST   /instances/{id}/messages      {"phone": "+5511999999999", "text": "Olá!"}
+POST   /instances/{id}/media          {"phone": "+...", "media_type": "image|audio|document", "data": "<base64>", "mimetype": "...", "caption": "...", "filename": "...", "voice_note": false}
 POST   /instances/{id}/pairing-code   {"phone": "+5511999999999"} -> {"pairing_code": "ABCD-1234"}
 PUT    /instances/{id}/webhook        {"url": "https://sua-app.com/wa", "secret": "..."}
 PUT    /instances/{id}/ai             {"provider": "groq", "system_prompt": "..."} -> config
@@ -126,6 +127,8 @@ Webhook enviado a cada texto recebido (somente conversas 1:1 neste MVP):
 
 Header `X-Webhook-Secret` acompanha quando configurado. Entrega com 3
 tentativas (backoff); sem webhook configurado, inbound é descartado com log.
+Mensagens de mídia (imagem/áudio/documento, até 12MB) chegam com
+`media: {type, mimetype, filename, caption, data(base64)}`.
 
 Erros seguem o envelope `{ "success": false, "error": {"code": "...", "message": "..."} }`
 com códigos estáveis: `unauthorized`, `instance_not_found`, `not_connected`,

@@ -41,7 +41,7 @@ function makeFakeSocket({ user = null } = {}) {
   };
 }
 
-function makeHarness() {
+function makeHarness({ mediaDownloader } = {}) {
   const sockets = [];
   const socketFactory = () => {
     const sock = makeFakeSocket();
@@ -73,7 +73,7 @@ function makeHarness() {
     },
   };
   const silent = { info() {}, warn() {}, error() {}, child() { return silent; } };
-  const manager = new WhatsAppManager({ sessionStore, socketFactory, log: silent });
+  const manager = new WhatsAppManager({ sessionStore, socketFactory, mediaDownloader, log: silent });
   return { manager, sockets, sessionStore };
 }
 
@@ -231,8 +231,7 @@ describe('WhatsAppManager', () => {
     assert.equal(delivered.length, 0);
   });
 
-  it('fans inbound out to the events sink even without webhook', async () => {
-    const sunk = [];
+  it('fans inbound out to the events sink even without webhook', async () => {    const sunk = [];
     const h = makeHarness();
     h.manager.eventsSink = async (payload) => {
       sunk.push(payload);
@@ -248,6 +247,104 @@ describe('WhatsAppManager', () => {
     assert.equal(sunk.length, 1);
     assert.equal(sunk[0].event, 'message.received');
     assert.equal(sunk[0].text, 'hey');
+  });
+
+  it('sends image/audio/document with validated content', async () => {
+    await manager.create('media');
+    const sock = sockets[0];
+    sock.user = { id: '5511000000000:1@s.whatsapp.net' };
+    sock.ev.emit('connection.update', { connection: 'open' });
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64');
+
+    await manager.sendMedia('media', '5511999999999', 'image', png, { mimetype: 'image/png', caption: 'olha' });
+    assert.deepEqual(sock.sent[0], {
+      jid: '5511999999999@s.whatsapp.net',
+      content: { image: Buffer.from([0x89, 0x50, 0x4e, 0x47]), mimetype: 'image/png', caption: 'olha' },
+    });
+
+    await manager.sendMedia('media', '5511999999999', 'audio', png, { mimetype: 'audio/ogg; codecs=opus', voiceNote: true });
+    assert.equal(sock.sent[1].content.ptt, true);
+
+    await manager.sendMedia('media', '5511999999999', 'document', png, { mimetype: 'application/pdf', filename: 'doc.pdf' });
+    assert.equal(sock.sent[2].content.fileName, 'doc.pdf');
+
+    await assert.rejects(
+      manager.sendMedia('media', '5511999999999', 'video', png, {}),
+      InvalidInputError
+    );
+    await assert.rejects(
+      manager.sendMedia('media', '5511999999999', 'image', png, { mimetype: 'image/gif' }),
+      InvalidInputError
+    );
+    await assert.rejects(
+      manager.sendMedia('media', '5511999999999', 'document', png, { mimetype: 'application/pdf' }),
+      InvalidInputError // filename required
+    );
+    await assert.rejects(
+      manager.sendMedia('media', '5511999999999', 'image', '', { mimetype: 'image/png' }),
+      InvalidInputError // empty payload
+    );
+  });
+
+  it('refuses media when not connected', async () => {
+    await manager.create('off');
+    const png = Buffer.from([1, 2]).toString('base64');
+    await assert.rejects(
+      manager.sendMedia('off', '5511999999999', 'image', png, { mimetype: 'image/png' }),
+      InstanceNotConnectedError
+    );
+  });
+
+  it('delivers inbound image as base64 payload', async () => {
+    const delivered = [];
+    const h = makeHarness({ mediaDownloader: async () => Buffer.from([9, 9, 9]) });
+    h.manager.deliverWebhook = async (args) => {
+      delivered.push(args);
+    };
+    await h.manager.create('img-in');
+    await h.manager.setWebhook('img-in', 'https://example.com/wa');
+    h.sockets[0].ev.emit('messages.upsert', {
+      type: 'notify',
+      messages: [
+        {
+          key: { remoteJid: '5511888888888@s.whatsapp.net', fromMe: false, id: 'IMG1' },
+          message: { imageMessage: { mimetype: 'image/jpeg', caption: 'foto!' } },
+          messageTimestamp: 5,
+        },
+      ],
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(delivered.length, 1);
+    assert.deepEqual(delivered[0].payload.media, {
+      type: 'image',
+      mimetype: 'image/jpeg',
+      filename: null,
+      caption: 'foto!',
+      data: Buffer.from([9, 9, 9]).toString('base64'),
+    });
+    assert.equal(delivered[0].payload.text, 'foto!');
+  });
+
+  it('skips inbound media over the size cap', async () => {
+    const delivered = [];
+    const h = makeHarness({ mediaDownloader: async () => Buffer.alloc(13 * 1024 * 1024) });
+    h.manager.deliverWebhook = async (args) => {
+      delivered.push(args);
+    };
+    await h.manager.create('big-in');
+    await h.manager.setWebhook('big-in', 'https://example.com/wa');
+    h.sockets[0].ev.emit('messages.upsert', {
+      type: 'notify',
+      messages: [
+        {
+          key: { remoteJid: '5511888888888@s.whatsapp.net', fromMe: false, id: 'BIG1' },
+          message: { imageMessage: { mimetype: 'image/jpeg' } },
+          messageTimestamp: 5,
+        },
+      ],
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(delivered.length, 0);
   });
 });
 

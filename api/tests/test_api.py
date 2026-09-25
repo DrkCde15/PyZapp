@@ -51,6 +51,10 @@ class FakeBaileys:
             raise BaileysError("not_connected", "not connected", 409)
         return {"message_id": "MID123"}
 
+    async def send_media(self, instance_id: str, payload: dict) -> dict:
+        await self.get_status(instance_id)
+        return {"message_id": "MID-MEDIA"}
+
     async def request_pairing_code(self, instance_id: str, phone: str) -> dict:
         await self.get_status(instance_id)
         return {"pairing_code": "ABCD-1234"}
@@ -191,3 +195,31 @@ def test_set_webhook_rejects_non_http(client):
         json={"url": "ftp://example.com/wa"},
     )
     assert resp.status_code == 422
+
+
+def test_send_media(client):
+    import base64
+
+    instance_id = client.post("/instances", headers=auth_headers()).json()["data"]["instance_id"]
+    data = base64.b64encode(b"fakepng").decode()
+    resp = client.post(
+        f"/instances/{instance_id}/media",
+        headers=auth_headers(),
+        json={"phone": "+5511999999999", "media_type": "image", "data": data,
+              "mimetype": "image/png", "caption": "olha"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["data"]["message_id"] == "MID-MEDIA"
+
+
+def test_send_media_rejects_bad_payload(client):
+    instance_id = client.post("/instances", headers=auth_headers()).json()["data"]["instance_id"]
+    url = f"/instances/{instance_id}/media"
+    bad_type = client.post(url, headers=auth_headers(),
+                           json={"phone": "+5511999999999", "media_type": "video",
+                                 "data": "aGk=", "mimetype": "video/mp4"})
+    assert bad_type.status_code == 422
+    bad_data = client.post(url, headers=auth_headers(),
+                           json={"phone": "+5511999999999", "media_type": "image",
+                                 "data": "%%%", "mimetype": "image/png"})
+    assert bad_data.status_code == 422

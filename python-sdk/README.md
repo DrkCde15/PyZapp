@@ -34,7 +34,9 @@ client.set_ai(inst.instance_id, provider="groq", system_prompt="Seja breve.")
 Instances: `create_instance`, `list_instances`, `get_instance`,
 `delete_instance`, `connect`, `get_qr`, `print_qr`, `get_status`.
 
-Messaging: `send_message`, `request_pairing_code`, `set_webhook(url, secret?)`.
+Messaging: `send_message`, `send_image(bytes-or-path, caption?)`,
+`send_audio(..., voice_note?)`, `send_document(..., filename)`,
+`request_pairing_code`, `set_webhook(url, secret?)`.
 
 AI: `set_ai`, `get_ai`, `disable_ai`.
 
@@ -58,10 +60,3 @@ except NotConnectedError:
 
 Python 3.10+. Server side (FastAPI + Baileys) is operated separately —
 see the [main repo](https://github.com/DrkCde15/PyZapp) to self-host with Podman.
-
-## Development
-
-```bash
-pip install -e ".[dev]"
-python -m pytest   # httpx.MockTransport, no network
-```

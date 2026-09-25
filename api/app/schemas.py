@@ -27,6 +27,40 @@ class SendMessageRequest(BaseModel):
     _normalize_phone = field_validator("phone", mode="before")(normalize_phone)
 
 
+class SendMediaRequest(BaseModel):
+    phone: str = Field(..., description="Destination in E.164, e.g. +5511999999999")
+    media_type: str = Field(..., description="image | audio | document")
+    data: str = Field(..., description="File bytes encoded in base64 (max ~16MB)")
+    mimetype: str | None = Field(default=None, description="e.g. image/jpeg, audio/ogg; codecs=opus")
+    caption: str | None = Field(default=None, max_length=1024)
+    filename: str | None = Field(default=None, description="Required for document")
+    voice_note: bool = Field(default=False, description="Audio sent as voice message")
+
+    _normalize_phone = field_validator("phone", mode="before")(normalize_phone)
+
+    @field_validator("media_type")
+    @classmethod
+    def _known_type(cls, value: str) -> str:
+        if value not in ("image", "audio", "document"):
+            raise ValueError("media_type must be image, audio or document")
+        return value
+
+    @field_validator("data")
+    @classmethod
+    def _base64_sized(cls, value: str) -> str:
+        import base64
+
+        if not value.strip():
+            raise ValueError("data must be a non-empty base64 string")
+        try:
+            raw = base64.b64decode(value, validate=True)
+        except Exception:
+            raise ValueError("data is not valid base64") from None
+        if len(raw) == 0 or len(raw) > 12 * 1024 * 1024:
+            raise ValueError("decoded media must be 1 byte–12MB")
+        return value
+
+
 class PairingCodeRequest(BaseModel):
     phone: str = Field(..., description="Phone that will type the code, E.164")
 
@@ -115,3 +149,7 @@ class InboundEvent(BaseModel):
     from_: str = Field(..., alias="from")
     text: str = ""
     timestamp: int | float | None = None
+    media: dict | None = Field(
+        default=None,
+        description="{type, mimetype, filename, caption, data(base64)} when present",
+    )

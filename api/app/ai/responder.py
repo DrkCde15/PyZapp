@@ -53,11 +53,20 @@ class AIResponder:
         return build_provider(cfg.provider, key, cfg.model, cfg.base_url)
 
     async def handle_inbound(
-        self, instance_id: str, chat: str, text: str, message_id: str | None = None
+        self,
+        instance_id: str,
+        chat: str,
+        text: str,
+        message_id: str | None = None,
+        has_media: bool = False,
     ) -> str | None:
         """Process one inbound text. Returns the reply message_id, or None."""
         cfg = await self._store.get_config(instance_id)
         if cfg is None or not cfg.enabled:
+            return None
+        if has_media:
+            # Text-only models for now; media goes to the user webhook only.
+            logger.info("event=ai_media_skip instance_id=%s from=%s", instance_id, mask_phone(chat))
             return None
         if not text.strip():
             return None

@@ -16,6 +16,7 @@ from app.schemas import (
     PairingCodeData,
     PairingCodeRequest,
     QrData,
+    SendMediaRequest,
     SendMessageRequest,
     StatusData,
     WebhookRequest,
@@ -142,6 +143,32 @@ async def send_message(instance_id: str, payload: SendMessageRequest, request: R
         "event=message_sent instance_id=%s to=%s message_id=%s",
         instance_id,
         mask_phone(payload.phone),
+        data.get("message_id"),
+    )
+    return ok_envelope(MessageResult(message_id=data.get("message_id", "")).model_dump())
+
+
+@router.post("/instances/{instance_id}/media", status_code=201)
+async def send_media(instance_id: str, payload: SendMediaRequest, request: Request):
+    if await request.app.state.store.get(instance_id) is None:
+        raise InstanceNotFoundError(instance_id)
+    data = await _baileys(request).send_media(
+        instance_id,
+        {
+            "to": payload.phone,
+            "media_type": payload.media_type,
+            "data": payload.data,
+            "mimetype": payload.mimetype,
+            "caption": payload.caption or "",
+            "filename": payload.filename,
+            "voice_note": payload.voice_note,
+        },
+    )
+    logger.info(
+        "event=media_sent instance_id=%s to=%s media_type=%s message_id=%s",
+        instance_id,
+        mask_phone(payload.phone),
+        payload.media_type,
         data.get("message_id"),
     )
     return ok_envelope(MessageResult(message_id=data.get("message_id", "")).model_dump())

@@ -154,3 +154,33 @@ def test_print_qr(capsys):
     assert raw == "QRDATA"
     out = capsys.readouterr().out
     assert len(out.strip().splitlines()) > 3  # actual ASCII matrix printed
+
+
+def test_send_media(tmp_path):
+    seen = {}
+
+    def handler(request: httpx.Request):
+        assert request.method == "POST" and request.url.path.endswith("/media")
+        seen.update(json.loads(request.content))
+        return ok({"message_id": "MID-M"}, status=201)
+
+    c = make_client(handler)
+    img = tmp_path / "foto.png"
+    img.write_bytes(b"\x89PNGdata")
+
+    sent = c.send_image("abc", "+5511999999999", str(img), caption="olha")
+    assert sent.message_id == "MID-M"
+    assert seen["media_type"] == "image"
+    assert seen["mimetype"] == "image/png"  # guessed from extension
+    assert seen["caption"] == "olha"
+    assert seen["filename"] == "foto.png"
+    import base64
+
+    assert base64.b64decode(seen["data"]) == b"\x89PNGdata"
+
+    c.send_audio("abc", "+5511999999999", b"oggbytes", voice_note=True)
+    assert seen["media_type"] == "audio" and seen["voice_note"] is True
+
+    c.send_document("abc", "+5511999999999", b"%PDF", filename="doc.pdf",
+                    mimetype="application/pdf")
+    assert seen["media_type"] == "document" and seen["filename"] == "doc.pdf"

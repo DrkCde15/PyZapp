@@ -69,6 +69,11 @@ class BaileysClient:
             "POST", f"/internal/instances/{instance_id}/messages", json={"to": to, "text": text}
         )
 
+    async def send_media(self, instance_id: str, payload: dict) -> dict:
+        return await self._request(
+            "POST", f"/internal/instances/{instance_id}/media", json=payload
+        )
+
     async def request_pairing_code(self, instance_id: str, phone: str) -> dict:
         return await self._request(
             "POST", f"/internal/instances/{instance_id}/pairing-code", json={"phone": phone}

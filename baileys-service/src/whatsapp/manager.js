@@ -62,10 +62,11 @@ async function defaultDeliverWebhook({ url, secret, payload, log }) {
  *   Route -> WhatsAppManager -> WhatsAppInstance -> Baileys
  */
 class WhatsAppManager {
-  constructor({ sessionStore, socketFactory, deliverWebhook, eventsSink, log } = {}) {
+  constructor({ sessionStore, socketFactory, mediaDownloader, deliverWebhook, eventsSink, log } = {}) {
     if (!sessionStore) throw new Error('WhatsAppManager requires a sessionStore');
     this.sessionStore = sessionStore;
     this.socketFactory = socketFactory;
+    this.mediaDownloader = mediaDownloader;
     this.deliverWebhook = deliverWebhook || defaultDeliverWebhook;
     // Optional fan-out of inbound events to the API for AI auto-reply:
     // async (payload) => void. Disabled when absent.
@@ -105,6 +106,7 @@ class WhatsAppManager {
       id: instanceId,
       sessionStore: this.sessionStore,
       socketFactory: this.socketFactory,
+      mediaDownloader: this.mediaDownloader,
     });
     this.instances.set(instanceId, instance);
     this._wire(instance);
@@ -144,6 +146,10 @@ class WhatsAppManager {
     return (await this._require(instanceId)).requestPairingCode(phone);
   }
 
+  async sendMedia(instanceId, to, mediaType, data, options = {}) {
+    return (await this._require(instanceId)).sendMedia(to, mediaType, data, options);
+  }
+
   async setWebhook(instanceId, url, secret = null) {
     return (await this._require(instanceId)).setWebhook(url, secret);
   }
@@ -166,6 +172,7 @@ class WhatsAppManager {
           id,
           sessionStore: this.sessionStore,
           socketFactory: this.socketFactory,
+          mediaDownloader: this.mediaDownloader,
         });
         this.instances.set(id, instance);
         this._wire(instance);

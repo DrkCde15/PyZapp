@@ -190,3 +190,15 @@ def test_internal_event_requires_key(client):
         "/internal/events", json={"event": "x", "instance_id": "i", "from": "1", "text": "hi"}
     )
     assert resp.status_code == 401
+
+
+def test_internal_media_event_skips_ai(client):
+    iid = _make_instance(client)
+    client.put(f"/instances/{iid}/ai", headers=auth(), json={"provider": "ollama"})
+    resp = client.post(
+        "/internal/events",
+        headers=internal(),
+        json={"event": "message.received", "instance_id": iid, "from": "5511",
+              "text": "foto!", "media": {"type": "image", "data": "aGk="}},
+    )
+    assert resp.json()["data"]["replied"] is False

@@ -83,6 +83,10 @@ async def inbound_event(payload: InboundEvent, request: Request):
     if payload.event != "message.received" or not payload.text.strip():
         return ok_envelope({"replied": False})
     reply_id = await request.app.state.responder.handle_inbound(
-        payload.instance_id, payload.from_, payload.text, payload.message_id
+        payload.instance_id,
+        payload.from_,
+        payload.text,
+        payload.message_id,
+        has_media=payload.media is not None,
     )
     return ok_envelope({"replied": reply_id is not None, "message_id": reply_id})
