@@ -1,0 +1,35 @@
+name: Publish SDK to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install SDK with dev deps
+        run: pip install ./python-sdk[dev]
+      - name: Run SDK tests
+        run: python -m pytest python-sdk/tests -q
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # trusted publishing (OIDC), no API token needed
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build backend
+        run: pip install build
+      - name: Build sdist + wheel
+        run: python -m build python-sdk/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
