@@ -1,0 +1,20 @@
+{
+  "name": "baileys-service",
+  "version": "0.1.0",
+  "description": "Internal Node.js service wrapping Baileys (WhatsApp Web). Only called by the FastAPI layer.",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.7.24",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "pino": "^9.6.0"
+  }
+}

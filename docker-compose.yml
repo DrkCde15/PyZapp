@@ -1,0 +1,53 @@
+services:
+  baileys:
+    build: ./baileys-service
+    container_name: pyzapp-baileys
+    environment:
+      BAILEYS_PORT: 3001
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set in .env}
+      SESSION_DIR: /app/sessions
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NODE_ENV: production
+    volumes:
+      - baileys-sessions:/app/sessions
+    expose:
+      - 3001
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    container_name: pyzapp-api
+    environment:
+      API_KEY: ${API_KEY:?set in .env}
+      ENVIRONMENT: production
+      BAILEYS_BASE_URL: http://baileys:3001
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set in .env}
+      CORS_ORIGINS: '["*"]'
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_PATH: /app/data/pyzapp.db
+    volumes:
+      - api-data:/app/data
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      baileys:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  baileys-sessions:
+    name: pyzapp-baileys-sessions
+  api-data:
+    name: pyzapp-api-data

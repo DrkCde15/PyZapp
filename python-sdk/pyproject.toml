@@ -1,0 +1,26 @@
+[project]
+name = "pyzapp-sdk"
+version = "0.1.0"
+description = "Elegant Python client for the PyZapp WhatsApp API. No Node.js required."
+requires-python = ">=3.10"
+dependencies = [
+  "httpx>=0.28,<0.29",
+  "pydantic>=2.13,<3",
+  "qrcode>=8",
+  "pillow>=10"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

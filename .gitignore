@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+node_modules/
+baileys-service/sessions/
+api/sessions/
+sessions/
+auth_info_baileys/
+.DS_Store
