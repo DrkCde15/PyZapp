@@ -2,6 +2,12 @@
 
 All notable changes to `pyzapp-sdk` follow [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-09-25
+
+### Changed
+- PyPI page rewrite (quickstart-first README), runnable `examples/`,
+  SDK test matrix (Python 3.10–3.14) in CI
+
 ## [0.2.0] - 2026-09-25
 
 ### Added
